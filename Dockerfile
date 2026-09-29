@@ -1,14 +1,24 @@
-# 1. Use the official Java 21 runtime base image
-FROM eclipse-temurin:21-jre-alpine
-
-# 2. Set the working directory inside the container
+# --- Stage 1: Build the application ---
+FROM maven:3.9.6-eclipse-temurin-21-alpine AS build
 WORKDIR /app
 
-# 3. Copy your local JAR file into the container
-COPY target/my-app-1.0.jar app.jar
+# Copy the build configuration and source code
+COPY pom.xml .
+COPY src ./src
 
-# 4. Expose the port your application listens on
+# Compile and package the application (skipping tests to speed up deployment)
+RUN mvn clean package -DskipTests
+
+# --- Stage 2: Create the runtime image ---
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+
+# Copy the built JAR from the first stage
+COPY --from=build /app/target/exp8web-0.0.1-SNAPSHOT.jar app.jar
+
+# Expose the port (Render handles this dynamically, but good for reference)
 EXPOSE 8080
 
-# 5. Define the command to run your Java 21 JAR file
+# Run the application
 ENTRYPOINT ["java", "-jar", "app.jar"]
+
